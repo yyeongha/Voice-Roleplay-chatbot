@@ -39,12 +39,20 @@ def chat_with_gpt(scenario, user_input):
     except Exception as e:
         return f"An error occurred: {e}"
 
-def check_context(scenario, response):
-    # 간단한 문맥 분석 로직
-    # 여기서는 시나리오 키워드를 포함하는지 검사합니다.
-    if scenario.lower() not in response.lower():
-        return f"입력이 주어진 상황극 시나리오와 맞지 않습니다. {scenario}에 대한 내용을 포함해주세요."
-    return response
+def check_context(scenario, user_input):
+    # 사용자의 입력이 시나리오의 키워드를 포함하고 있는지 확인
+    if scenario.lower() not in user_input.lower():
+        # 맥락에 맞지 않는 입력에 대해 적절한 응답을 제안합니다.
+        prompt = f"주어진 시나리오 '{scenario}'에 대해 사용자가 '{user_input}'라고 하였습니다. 이는 문맥에 맞지 않습니다. 문맥에 맞는 적절한 반응을 제안해 주세요."
+        correction_response = openai.Completion.create(
+            model="text-davinci-002",
+            prompt=prompt,
+            max_tokens=150
+        )
+        corrected_text = correction_response.choices[0].text.strip()
+        return False, f"입력하신 내용이 시나리오와 맞지 않습니다. 아마 이렇게 말씀하시려는 것이었나요: '{corrected_text}'"
+    return True, user_input
+
 
 def start_role_play():
     scenario = input("상황극을 시작할 시나리오를 입력해주세요: ")
