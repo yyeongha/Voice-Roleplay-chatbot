@@ -40,37 +40,44 @@ def chat_with_gpt(scenario, user_input):
         return f"An error occurred: {e}"
 
 def check_context(scenario, user_input):
-    # 사용자의 입력이 시나리오의 키워드를 포함하고 있는지 확인
-    if scenario.lower() not in user_input.lower():
-        # 맥락에 맞지 않는 입력에 대해 적절한 응답을 제안합니다.
-        prompt = f"주어진 시나리오 '{scenario}'에 대해 사용자가 '{user_input}'라고 하였습니다. 이는 문맥에 맞지 않습니다. 문맥에 맞는 적절한 반응을 제안해 주세요."
-        correction_response = openai.Completion.create(
-            model="text-davinci-002",
-            prompt=prompt,
-            max_tokens=150
-        )
-        corrected_text = correction_response.choices[0].text.strip()
-        return False, f"입력하신 내용이 시나리오와 맞지 않습니다. 아마 이렇게 말씀하시려는 것이었나요: '{corrected_text}'"
-    return True, user_input
+    # GPT 모델을 이용해 입력과 시나리오의 맥락적 일치성을 분석합니다 (한국어로 질의).
+    context_prompt = f"주어진 시나리오: '{scenario}'에 대해 사용자가 입력한 내용: '{user_input}'. 이 입력이 시나리오의 문맥에 맞습니까? 맞지 않다면, 문맥에 적절한 반응을 제안해 주세요."
+    
+    context_check = openai.Completion.create(
+        model="text-davinci-002",
+        prompt=context_prompt,
+        max_tokens=250,
+        temperature=0.5
+    )
+    context_response = context_check.choices[0].text.strip()
 
+    # 맥락 분석 결과를 한국어로 제공합니다.
+    if "맞지 않다면" in context_response:
+        return False, context_response
+    return True, user_input
 
 def start_role_play():
     scenario = input("상황극을 시작할 시나리오를 입력해주세요: ")
-    print("상황극이 시작되었습니다. 'exit'를 입력하면 상황극을 종료합니다.")
+    print("상황극이 시작되었습니다. '종료'를 입력하면 상황극을 종료합니다.")
     
     while True:
         user_input = listen_and_transcribe()
-        if user_input.lower() == "exit":
-            print("Ending the role-play.")
+        if user_input.lower() == "종료":
+            print("상황극을 종료합니다.")
             break
 
         if user_input == "음성 인식에 실패했습니다." or user_input.startswith("음성 인식 서비스 요청에 실패했습니다:"):
             print(user_input)
             continue
         
+        # GPT로부터 받은 응답을 맥락 분석
         gpt_response = chat_with_gpt(scenario, user_input)
-        context_checked_response = check_context(scenario, gpt_response)
-        print(f"ChatGPT: {context_checked_response}")
+        context_valid, context_checked_response = check_context(scenario, gpt_response)
+
+        if context_valid:
+            print(f"ChatGPT: {context_checked_response}")
+        else:
+            print(f"ChatGPT 제안: {context_checked_response}")
 
 # 상황극 시작
 start_role_play()
